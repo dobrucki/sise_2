@@ -1,40 +1,39 @@
 import torch
 import pandas as pd
 from statistics import mean
+from math import fabs
 
 from network import Network
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# torch.set_default_tensor_type('torch.cuda.FloatTensor')
-
 data = pd.read_csv('data.csv', sep=';', names=['X', 'Y', 'TrueX', 'TrueY'])
+test_data = pd.read_csv('test_data.csv', sep=';', names=['X', 'Y', 'TrueX', 'TrueY'])
 
 
 train = torch.tensor(data.values, dtype=torch.float)
+test = torch.tensor(test_data.values, dtype=torch.float, requires_grad=False)
 min = torch.min(train)
 max = torch.max(train)
+test_min = torch.min(test)
+test_max = torch.max(test)
 
 train = (train - min) / (max - min)
-# train = train.normal(0, 1)
-# print(train.get_device())
-
+test = (test - test_min) / (test_max - test_min)
 
 
 net = Network()
-learning_rate = 1e-2
+learning_rate = 1
 criterion = torch.nn.MSELoss()
 # optimizer = torch.optim.SGD(net.parameters(), learning_rate)
 
 errors = []
-for i in range(10000):
-    trainset = torch.utils.data.DataLoader(train, batch_size=5, shuffle=True)
-    counter = 0
+for i in range(200):
+    trainset = torch.utils.data.DataLoader(train, batch_size=64, shuffle=True)
     optimizer = torch.optim.SGD(net.parameters(), learning_rate)
+    # optimizer = torch.optim.Adam(net.parameters())
     for x in trainset:
-        counter += 1
         input = x[:, [0, 1]]
-        target = x[:, [2, 3]]
-        
+        target = x[:, [2, 3]]   
+    
         optimizer.zero_grad()
         output = net(input)
         loss = criterion(output, target)
@@ -42,26 +41,28 @@ for i in range(10000):
         net.zero_grad()
         loss.backward()
         optimizer.step()
-    learning_rate *= .9
-    print('[', i, ']', 'average error: ', mean(errors))
+        learning_rate *= (1. - 1e-6)
+    if i % 10 == 0:
+        print('[', i, ']', 'mean error: ', mean(errors), ' | current learning rate: ', learning_rate)
 
-
-
-
-trainset = torch.utils.data.DataLoader(train, batch_size=1, shuffle=True)    
-for x in trainset:
+testset = torch.utils.data.DataLoader(test, batch_size=1, shuffle=True)
+error_fn = torch.nn.MSELoss()
+errors = []
+counter = 0
+results = []
+for x in testset:
+    counter += 1
     input = x[:, [0, 1]]
-    check = x[:, [2, 3]]
-    prediction = net(input)
-    print(prediction)
-    print(check)
-    break
-# # true_set = torch.tensor(data[['TrueX', 'TrueY']].values, dtype=torch.float)
-# # print(true_set)
-# # pred = net(training_set)
-# # loss = loss_fn(pred, true_set)
-# # print(loss.item())
+    target = x[:, [2, 3]]
+    output = net(input)
+    input = input * (test_max - test_min) + test_min
+    target = target * (test_max - test_min) + test_min
+    output = output * (test_max - test_min) + test_min
+    row = [
+        input[0][0].item(), input[0][1].item(), target[0][0].item(), target[0][1].item(), output[0][0].item(), 
+        output[0][1].item(), (target[0][0].item() - output[0][0].item()) ** 2 + (target[0][1].item() - output[0][1].item()) ** 2
+    ]
+    results.append(row)
 
-# # optimizer.zero_grad()
-# # loss.backward()
-# # optimizer.step()
+results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY', 'Error'])
+print(results.head(10))
