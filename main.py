@@ -60,9 +60,9 @@ for x in testset:
     output = output * (test_max - test_min) + test_min
     row = [
         input[0][0].item(), input[0][1].item(), target[0][0].item(), target[0][1].item(), output[0][0].item(), 
-        output[0][1].item(), (target[0][0].item() - output[0][0].item()) ** 2 + (target[0][1].item() - output[0][1].item()) ** 2
+        output[0][1].item()#, (target[0][0].item() - output[0][0].item()) ** 2 + (target[0][1].item() - output[0][1].item()) ** 2
     ]
     results.append(row)
 
-results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY', 'Error'])
+results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY'])
 print(results.head(10))
