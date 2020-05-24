@@ -2,6 +2,8 @@ import torch
 import pandas as pd
 from statistics import mean
 from math import fabs
+import numpy as np
+import matplotlib.pyplot as plt
 
 from network import Network
 
@@ -21,29 +23,30 @@ test = (test - test_min) / (test_max - test_min)
 
 
 net = Network()
-learning_rate = 1
+learning_rate = 5e-3
 criterion = torch.nn.MSELoss()
 # optimizer = torch.optim.SGD(net.parameters(), learning_rate)
 
-errors = []
-for i in range(200):
-    trainset = torch.utils.data.DataLoader(train, batch_size=64, shuffle=True)
-    optimizer = torch.optim.SGD(net.parameters(), learning_rate)
-    # optimizer = torch.optim.Adam(net.parameters())
+for i in range(100):
+    trainset = torch.utils.data.DataLoader(train, batch_size=32, shuffle=True)
+    optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
+    # optimizer = torch.optim.Adam(net.parameters(), learning_rate)
+    errors = []
     for x in trainset:
+        net.zero_grad()
         input = x[:, [0, 1]]
         target = x[:, [2, 3]]   
     
         optimizer.zero_grad()
         output = net(input)
         loss = criterion(output, target)
-        errors.append(loss.item()) 
-        net.zero_grad()
+        errors.append(loss.item())
         loss.backward()
         optimizer.step()
-        learning_rate *= (1. - 1e-6)
-    if i % 10 == 0:
-        print('[', i, ']', 'mean error: ', mean(errors), ' | current learning rate: ', learning_rate)
+    # plt.scatter(i, mean(errors))
+    # plt.pause(0.05)
+    # if i % 10 == 0:
+    print('[', i, ']', 'loss: ', mean(errors))
 
 testset = torch.utils.data.DataLoader(test, batch_size=1, shuffle=True)
 error_fn = torch.nn.MSELoss()
@@ -55,14 +58,14 @@ for x in testset:
     input = x[:, [0, 1]]
     target = x[:, [2, 3]]
     output = net(input)
-    input = input * (test_max - test_min) + test_min
-    target = target * (test_max - test_min) + test_min
-    output = output * (test_max - test_min) + test_min
+    # input = input * (test_max - test_min) + test_min
+    # target = target * (test_max - test_min) + test_min
+    # output = output * (test_max - test_min) + test_min
     row = [
         input[0][0].item(), input[0][1].item(), target[0][0].item(), target[0][1].item(), output[0][0].item(), 
-        output[0][1].item()#, (target[0][0].item() - output[0][0].item()) ** 2 + (target[0][1].item() - output[0][1].item()) ** 2
+        output[0][1].item(), (target[0][0].item() - output[0][0].item()) ** 2 + (target[0][1].item() - output[0][1].item()) ** 2
     ]
     results.append(row)
 
-results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY'])
+results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY', 'Error'])
 print(results.head(10))
