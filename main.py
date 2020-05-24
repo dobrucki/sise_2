@@ -30,7 +30,6 @@ criterion = torch.nn.MSELoss()
 for i in range(100):
     trainset = torch.utils.data.DataLoader(train, batch_size=32, shuffle=True)
     optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
-    # optimizer = torch.optim.Adam(net.parameters(), learning_rate)
     errors = []
     for x in trainset:
         net.zero_grad()
@@ -51,21 +50,18 @@ for i in range(100):
 testset = torch.utils.data.DataLoader(test, batch_size=1, shuffle=True)
 error_fn = torch.nn.MSELoss()
 errors = []
-counter = 0
 results = []
 for x in testset:
-    counter += 1
     input = x[:, [0, 1]]
     target = x[:, [2, 3]]
     output = net(input)
-    # input = input * (test_max - test_min) + test_min
-    # target = target * (test_max - test_min) + test_min
-    # output = output * (test_max - test_min) + test_min
+    input = input * (test_max - test_min) + test_min
+    target = target * (test_max - test_min) + test_min
+    output = output * (test_max - test_min) + test_min
     row = [
-        input[0][0].item(), input[0][1].item(), target[0][0].item(), target[0][1].item(), output[0][0].item(), 
-        output[0][1].item(), (target[0][0].item() - output[0][0].item()) ** 2 + (target[0][1].item() - output[0][1].item()) ** 2
+        input[0][0].item(), input[0][1].item(), target[0][0].item(), target[0][1].item(), output[0][0].item(), output[0][1].item()
     ]
     results.append(row)
 
-results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY', 'Error'])
+results = pd.DataFrame(results, columns=['X', 'Y', 'TargetX', 'TargetY', 'OutputX', 'OutputY'])
 print(results.head(10))
